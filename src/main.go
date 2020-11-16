@@ -11,9 +11,9 @@ import (
 var stop = false
 
 func main() {
-	_, err := gow32.CreateMutex("Stadia2Xbox")
+	_, err := gow32.CreateMutex("stadia2xbox")
 	if err != nil {
-		msg("An instance of Stadia2Xbox is already running!")
+		msg("An instance of stadia2xbox is already running!")
 	} else {
 		systray.Run(ready, close)
 	}
@@ -107,7 +107,8 @@ func close() {
 
 func msg(str string) {
 	notif := toast.Notification{
-		Title:   "Stadia2Xbox",
+		AppID:   "stadia2xbox",
+		Title:   "stadia2xbox",
 		Message: str,
 	}
 	notif.Push()
