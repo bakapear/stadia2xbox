@@ -2,6 +2,10 @@ package stadia
 
 import (
 	"errors"
+	"fmt"
+	"os/exec"
+	"strings"
+	"syscall"
 
 	"./hid"
 )
@@ -16,6 +20,7 @@ func Open() (*Device, error) {
 	devices, _ := hid.Devices()
 	for _, device := range devices {
 		if device.VendorID == stadiaVID && device.ProductID == stadiaPID {
+			reEnable(device.Path)
 			device, err := device.Open()
 			return &Device{device}, err
 		}
@@ -34,4 +39,12 @@ func (d Device) Read() (*Controller, error) {
 
 func (c *Device) Vibrate(largeMotor, smallMotor byte) error {
 	return c.Write([]byte{0x05, largeMotor, largeMotor, smallMotor, smallMotor})
+}
+
+func reEnable(path string) {
+	var id = strings.Replace(path[strings.Index(path, `\\?\`)+4:strings.LastIndex(path, `#`)], `#`, `\`, -1)
+	ps, _ := exec.LookPath("powershell.exe")
+	cmd := exec.Command(ps, fmt.Sprintf(`Disable-PnpDevice -InstanceId "%s" -Confirm:0 ; Enable-PnpDevice -InstanceId "%s" -Confirm:0`, id, id))
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd.Run()
 }
