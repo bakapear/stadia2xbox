@@ -11,7 +11,7 @@ import (
 	"gopkg.in/toast.v1"
 )
 
-var stop = false
+var globalStop = false
 
 func main() {
 	_, err := gow32.CreateMutex("stadia2xbox")
@@ -51,14 +51,14 @@ func refresh(re *systray.MenuItem) {
 	re.SetTitle("Refreshing...")
 
 	connect(re)
-
-	re.Enable()
-	msg := fmt.Sprintf("Refresh (%d devices)", len(stadia.Controllers))
-	re.SetTitle(msg)
 }
 
 func connect(re *systray.MenuItem) {
 	device, err := stadia.Open()
+
+	re.Enable()
+	update(re)
+
 	if err != nil {
 		msg(err.Error())
 		return
@@ -66,8 +66,7 @@ func connect(re *systray.MenuItem) {
 	defer func() {
 		device.Close()
 		delete(stadia.Controllers, device.Info().Path)
-		msg := fmt.Sprintf("Refresh (%d devices)", len(stadia.Controllers))
-		re.SetTitle(msg)
+		update(re)
 	}()
 
 	emu, err := xbox.Open(func(vibration xbox.Vibration) {
@@ -89,7 +88,7 @@ func connect(re *systray.MenuItem) {
 	msg("Stadia Controller sucessfully connected and emulated as Xbox Controller")
 
 	for {
-		if stop {
+		if globalStop {
 			return
 		}
 		d, err := device.Read()
@@ -129,8 +128,13 @@ func connect(re *systray.MenuItem) {
 	}
 }
 
+func update(re *systray.MenuItem) {
+	msg := fmt.Sprintf("Refresh (%d devices)", len(stadia.Controllers))
+	re.SetTitle(msg)
+}
+
 func close() {
-	stop = true
+	globalStop = true
 }
 
 func msg(str string) {
