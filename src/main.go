@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"stadia2xbox/stadia"
 	"stadia2xbox/xbox"
@@ -21,8 +22,10 @@ func main() {
 	}
 }
 
+//go:embed data/stadia.ico
+var icon []byte
+
 func ready() {
-	icon, _ := Asset("data/stadia.ico")
 	systray.SetIcon(icon)
 
 	re := systray.AddMenuItem("Refresh (0 devices)", "Refresh devices")
