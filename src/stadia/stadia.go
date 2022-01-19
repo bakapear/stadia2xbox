@@ -16,7 +16,7 @@ type Device struct {
 
 const stadiaVID, stadiaPID = 0x18D1, 0x9400
 
-var Controllers map[string]bool
+var Controllers = make(map[string]bool)
 
 func Open() (*Device, error) {
 	devices, _ := hid.Devices()
