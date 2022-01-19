@@ -1,8 +1,10 @@
 package main
 
 import (
-	"./stadia"
-	"./xbox"
+	"fmt"
+	"stadia2xbox/stadia"
+	"stadia2xbox/xbox"
+
 	"github.com/getlantern/systray"
 	"github.com/rodolfoag/gow32"
 	"gopkg.in/toast.v1"
@@ -22,25 +24,48 @@ func main() {
 func ready() {
 	icon, _ := Asset("data/stadia.ico")
 	systray.SetIcon(icon)
-	quit := systray.AddMenuItem("Exit", "Exits the application")
 
+	re := systray.AddMenuItem("Refresh (0 devices)", "Refresh devices")
+	go repeat(re)
+
+	quit := systray.AddMenuItem("Exit", "Exits the application")
 	go func() {
 		<-quit.ClickedCh
 		systray.Quit()
 	}()
 
-	start()
+	refresh(re)
 }
 
-func start() {
-	defer systray.Quit()
+func repeat(re *systray.MenuItem) {
+	<-re.ClickedCh
+	refresh(re)
+	repeat(re)
+}
 
+func refresh(re *systray.MenuItem) {
+	re.Disable()
+	re.SetTitle("Refreshing...")
+
+	connect(re)
+
+	re.Enable()
+	msg := fmt.Sprintf("Refresh (%d devices)", len(stadia.Controllers))
+	re.SetTitle(msg)
+}
+
+func connect(re *systray.MenuItem) {
 	device, err := stadia.Open()
 	if err != nil {
 		msg(err.Error())
 		return
 	}
-	defer device.Close()
+	defer func() {
+		device.Close()
+		delete(stadia.Controllers, device.Info().Path)
+		msg := fmt.Sprintf("Refresh (%d devices)", len(stadia.Controllers))
+		re.SetTitle(msg)
+	}()
 
 	emu, err := xbox.Open(func(vibration xbox.Vibration) {
 		device.Vibrate(vibration.LargeMotor, vibration.SmallMotor)

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"syscall"
 
-	"./hid"
+	"stadia2xbox/stadia/hid"
 )
 
 type Device struct {
@@ -16,16 +16,21 @@ type Device struct {
 
 const stadiaVID, stadiaPID = 0x18D1, 0x9400
 
+var Controllers map[string]bool
+
 func Open() (*Device, error) {
 	devices, _ := hid.Devices()
 	for _, device := range devices {
-		if device.VendorID == stadiaVID && device.ProductID == stadiaPID {
+		if device.VendorID == stadiaVID && device.ProductID == stadiaPID && !Controllers[device.Path] {
 			reEnable(device.Path)
-			device, err := device.Open()
-			return &Device{device}, err
+			d, err := device.Open()
+			if err == nil {
+				Controllers[device.Path] = true
+			}
+			return &Device{d}, err
 		}
 	}
-	return nil, errors.New("No stadia controller devices were found")
+	return nil, errors.New("No new stadia controllers found")
 }
 
 func (d Device) Read() (*Controller, error) {
