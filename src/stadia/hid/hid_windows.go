@@ -279,6 +279,10 @@ func (d *winDevice) ReadError() error {
 	return d.readErr
 }
 
+func (d *winDevice) Info() *DeviceInfo {
+	return d.info
+}
+
 func (d *winDevice) readThread() {
 	defer close(d.readCh)
 

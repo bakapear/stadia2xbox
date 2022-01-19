@@ -21,6 +21,9 @@ type DeviceInfo struct {
 
 // A Device provides access to a HID device.
 type Device interface {
+	// DeviceInfo
+	Info() *DeviceInfo
+
 	// Close closes the device and associated resources.
 	Close()
 
