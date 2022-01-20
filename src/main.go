@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 	"stadia2xbox/stadia"
+	"stadia2xbox/stadia/hid"
 	"stadia2xbox/xbox"
 
 	"github.com/getlantern/systray"
@@ -50,11 +51,20 @@ func refresh(re *systray.MenuItem) {
 	re.Disable()
 	re.SetTitle("Refreshing...")
 
-	connect(re)
+	devices := stadia.Devices()
+	if len(devices) == 0 {
+		msg("No new Stadia Controllers found")
+		re.Enable()
+		update(re)
+	} else {
+		for _, device := range devices {
+			go connect(device, re)
+		}
+	}
 }
 
-func connect(re *systray.MenuItem) {
-	device, err := stadia.Open()
+func connect(de *hid.DeviceInfo, re *systray.MenuItem) {
+	device, err := stadia.Open(de)
 
 	re.Enable()
 	update(re)
@@ -76,16 +86,16 @@ func connect(re *systray.MenuItem) {
 		msg(err.Error())
 		return
 	}
+	defer emu.Close()
 
 	con, err := emu.Connect()
 	if err != nil {
 		msg(err.Error())
 		return
 	}
-	defer emu.Close()
 	defer con.Close()
 
-	msg("Stadia Controller sucessfully connected and emulated as Xbox Controller")
+	msg("Stadia Controller successfully connected and emulated as Xbox Controller")
 
 	for {
 		if globalStop {
@@ -129,7 +139,12 @@ func connect(re *systray.MenuItem) {
 }
 
 func update(re *systray.MenuItem) {
-	msg := fmt.Sprintf("Refresh (%d devices)", len(stadia.Controllers))
+	l := len(stadia.Controllers)
+	d := "device"
+	if l != 1 {
+		d += "s"
+	}
+	msg := fmt.Sprintf("Refresh (%d %s)", l, d)
 	re.SetTitle(msg)
 }
 

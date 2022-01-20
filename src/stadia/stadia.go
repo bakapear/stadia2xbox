@@ -18,19 +18,24 @@ const stadiaVID, stadiaPID = 0x18D1, 0x9400
 
 var Controllers = make(map[string]bool)
 
-func Open() (*Device, error) {
+func Devices() []*hid.DeviceInfo {
 	devices, _ := hid.Devices()
+	a := []*hid.DeviceInfo{}
 	for _, device := range devices {
 		if device.VendorID == stadiaVID && device.ProductID == stadiaPID && !Controllers[device.Path] {
-			reEnable(device.Path)
-			d, err := device.Open()
-			if err == nil {
-				Controllers[device.Path] = true
-			}
-			return &Device{d}, err
+			a = append(a, device)
 		}
 	}
-	return nil, errors.New("No new stadia controllers found")
+	return a
+}
+
+func Open(device *hid.DeviceInfo) (*Device, error) {
+	reEnable(device.Path)
+	d, err := device.Open()
+	if err == nil {
+		Controllers[device.Path] = true
+	}
+	return &Device{d}, err
 }
 
 func (d Device) Read() (*Controller, error) {
