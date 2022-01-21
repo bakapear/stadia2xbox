@@ -178,7 +178,7 @@ func DeviceChange() {
 	}
 	pause = true
 	go func() {
-		time.Sleep(time.Second)
+		time.Sleep(time.Second / 5)
 		pause = false
 		refresh()
 	}()
