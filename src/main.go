@@ -6,13 +6,14 @@ import (
 	"stadia2xbox/stadia"
 	"stadia2xbox/stadia/hid"
 	"stadia2xbox/xbox"
+	"time"
 
 	"github.com/getlantern/systray"
 	"github.com/rodolfoag/gow32"
 	"gopkg.in/toast.v1"
 )
 
-var globalStop = false
+var GlobalStop = false
 
 func main() {
 	_, err := gow32.CreateMutex("stadia2xbox")
@@ -26,11 +27,13 @@ func main() {
 //go:embed data/stadia.ico
 var icon []byte
 
+var re *systray.MenuItem
+
 func ready() {
 	systray.SetIcon(icon)
 
-	re := systray.AddMenuItem("Refresh (0 devices)", "Refresh devices")
-	go repeat(re)
+	re = systray.AddMenuItem("Refresh (0 devices)", "Refresh devices")
+	go repeat()
 
 	quit := systray.AddMenuItem("Exit", "Exits the application")
 	go func() {
@@ -38,16 +41,19 @@ func ready() {
 		systray.Quit()
 	}()
 
-	refresh(re)
+	refresh()
 }
 
-func repeat(re *systray.MenuItem) {
+func repeat() {
 	<-re.ClickedCh
-	refresh(re)
-	repeat(re)
+	refresh()
+	repeat()
 }
 
-func refresh(re *systray.MenuItem) {
+func refresh() {
+	if re.Disabled() {
+		return
+	}
 	re.Disable()
 	re.SetTitle("Refreshing...")
 
@@ -55,19 +61,22 @@ func refresh(re *systray.MenuItem) {
 	if len(devices) == 0 {
 		msg("No new Stadia Controllers found")
 		re.Enable()
-		update(re)
+		update()
 	} else {
 		for _, device := range devices {
-			go connect(device, re)
+			go connect(device)
 		}
 	}
 }
 
-func connect(de *hid.DeviceInfo, re *systray.MenuItem) {
+func connect(de *hid.DeviceInfo) {
 	device, err := stadia.Open(de)
 
-	re.Enable()
-	update(re)
+	go func() {
+		time.Sleep(time.Second / 2)
+		re.Enable()
+		update()
+	}()
 
 	if err != nil {
 		msg(err.Error())
@@ -76,7 +85,7 @@ func connect(de *hid.DeviceInfo, re *systray.MenuItem) {
 	defer func() {
 		device.Close()
 		delete(stadia.Controllers, device.Info().Path)
-		update(re)
+		update()
 	}()
 
 	emu, err := xbox.Open(func(vibration xbox.Vibration) {
@@ -98,7 +107,7 @@ func connect(de *hid.DeviceInfo, re *systray.MenuItem) {
 	msg("Stadia Controller successfully connected and emulated as Xbox Controller")
 
 	for {
-		if globalStop {
+		if GlobalStop {
 			return
 		}
 		d, err := device.Read()
@@ -138,7 +147,7 @@ func connect(de *hid.DeviceInfo, re *systray.MenuItem) {
 	}
 }
 
-func update(re *systray.MenuItem) {
+func update() {
 	l := len(stadia.Controllers)
 	d := "device"
 	if l != 1 {
@@ -149,7 +158,7 @@ func update(re *systray.MenuItem) {
 }
 
 func close() {
-	globalStop = true
+	GlobalStop = true
 }
 
 func msg(str string) {
@@ -159,4 +168,18 @@ func msg(str string) {
 		Message: str,
 	}
 	notif.Push()
+}
+
+var pause = false
+
+func DeviceChange() {
+	if pause || re.Disabled() {
+		return
+	}
+	pause = true
+	go func() {
+		time.Sleep(time.Second)
+		pause = false
+		refresh()
+	}()
 }
